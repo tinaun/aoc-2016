@@ -1,0 +1,65 @@
+/// advent of code 
+///
+/// problem 8
+///
+
+pub static PROBLEM_NUMBER: &'static str = "8a"; 
+
+
+
+pub fn adv_main(input: Vec<String>) {
+
+    let mut cpu = [i32; 4];
+
+    let parse_reg = | v: &str | -> usize {
+        match v {
+            "a" => 0,
+            "b" => 1,
+            "c" => 2,
+            "d" => 3,
+            _ => panic!(),
+        }
+    };
+
+    let parse_value = | v: &str | -> i32 {
+        match v {
+            "a" => cpu[0],
+            "b" => cpu[1],
+            "c" => cpu[2],
+            "d" => cpu[3],
+            _ => v.parse().unwrap(),
+        }
+    };
+
+    let mut pc = 0;
+
+    loop {
+        let line = input[pc];
+
+        let words: Vec<_> = input.split(" ").unwrap();   
+
+        match words[0] {
+            "cpy" => cpu[ parse_reg(words[1]) ] += parse_value(words[2]),
+            "inc" => cpu[ parse_reg(words[1]) ] += 1,
+            "dec" => cpu[ parse_reg(words[1]) ] -= 1,
+            "jnz" => {
+                if parse_value(words[1]) != 0 {
+                    pc += parse_value(words[1]);
+                    continue;
+                }
+            }
+            _ => {},
+        }
+
+        pc += 1;
+        if pc > input.len() {
+            break;
+        }
+    }
+
+    println!("a: {}", cpu[0]);
+
+
+
+}
+
