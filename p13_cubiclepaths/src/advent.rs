@@ -2,7 +2,7 @@
 ///
 /// problem 13
 ///
-/// pathfinding
+/// pathfinding, with gif output
 ///
 
 pub static PROBLEM_NUMBER: &'static str = "13"; 
