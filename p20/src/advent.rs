@@ -14,6 +14,7 @@
 pub static PROBLEM_NUMBER: &'static str = "20"; 
 
 use std::collections::BTreeSet;
+use std::cmp::max;
 
 pub fn adv_main(input: Vec<String>) {
     let mut ranges: BTreeSet<(u32, u32)> = BTreeSet::new();
@@ -30,13 +31,11 @@ pub fn adv_main(input: Vec<String>) {
 
     let mut lasthigh = 0;
     for (l, h) in ranges {
-        if (lasthigh) < l-1 && l > 0 {
+        if l > 0 && (lasthigh) < l-1 {
             println!("gap! - {} ", lasthigh + 1);
         }
 
-        if h > lasthigh {
-            lasthigh = h;
-        }
+        lasthigh = max(h, lasthigh);
     }
 
 }
