@@ -6,30 +6,101 @@
 
 pub static PROBLEM_NUMBER: &'static str = "23"; 
 
-fn parse_reg(v: &str) -> Option<usize> {
-    match v {
-        "a" => Some(0),
-        "b" => Some(1),
-        "c" => Some(2),
-        "d" => Some(3),    
-        _ => None,
+use std::str::FromStr;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Reg {
+    A, B, C, D,
+}
+
+impl From<Reg> for usize {
+    fn from(t: Reg) -> Self {
+        match t {
+            Reg::A => 0,
+            Reg::B => 1,
+            Reg::C => 2,
+            Reg::D => 3,
+        }
     }
 }
 
-fn parse_value(c: [i32; 4], v: &str) -> i32 {
-    match v {
-        "a" => c[0],
-        "b" => c[1],
-        "c" => c[2],
-        "d" => c[3],
-        _ => v.parse().unwrap(),
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Arg {
+    Reg(Reg),
+    Value(i32),
+}
+
+impl Arg {
+    fn get_value(&self, cpu: [i32; 4]) -> i32 {
+        match *self {
+            Arg::Reg(r) => cpu[ usize::from(r) ],
+            Arg::Value(v) => v,
+        }
     }
 }
 
+impl FromStr for Arg {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {        
+        match s {
+            "a" => Ok(Arg::Reg(Reg::A)),
+            "b" => Ok(Arg::Reg(Reg::B)),
+            "c" => Ok(Arg::Reg(Reg::C)),
+            "d" => Ok(Arg::Reg(Reg::D)),
+            s   => {
+                match s.parse::<i32>() {
+                    Ok(v) => Ok(Arg::Value(v)),
+                    Err(_) => Err("invalid register".to_string()),
+                }
+            }             
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Instr {
+    Copy(Arg, Arg),
+    Increment(Arg),
+    Decrement(Arg),
+    JmpNotZro(Arg, Arg),
+    Toggle(Arg),
+}
+
+impl Instr {
+    fn toggle(self) -> Self {
+        use self::Instr::*;
+
+        match self {
+            Toggle(a) | Decrement(a) => Increment(a),
+            Increment(a)    => Decrement(a),
+            JmpNotZro(a, b) => Copy(a, b),
+            Copy(a, b)      => JmpNotZro(a, b),
+        }
+    }
+}
+
+impl FromStr for Instr {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut words = s.split(" ");
+        let instr = words.next().unwrap(); // split always has at least 1 item, should never panic
+        let a: Arg = words.next().ok_or("too few arguments".to_string())?.parse()?; //all instructions have one argument;
+        let b: Result<Arg, _> = words.next().ok_or("too few arguments".to_string()).and_then(|s| s.parse());
+
+        match instr {
+            "cpy" => Ok(Instr::Copy(a, b?)),
+            "inc" => Ok(Instr::Increment(a)),
+            "dec" => Ok(Instr::Decrement(a)),
+            "jnz" => Ok(Instr::JmpNotZro(a, b?)),
+            "tgl" => Ok(Instr::Toggle(a)),
+            s     => Err(format!("`{}`: invalid instruction.", s)),
+        }
+    }
+}
 
 pub fn adv_main(input: Vec<String>) {
 
-    let mut input: Vec<Vec<String>> = input.iter().map(|s| s.split(" ").map(|s| s.to_string() ).collect()).collect();
+    let mut input: Vec<Instr> = input.iter().map(|s| s.parse().unwrap() ).collect();
     let mut cpu = [12i32, 0i32, 0i32, 0i32];
 
     let mut pc: i32 = 0;
@@ -38,52 +109,25 @@ pub fn adv_main(input: Vec<String>) {
     while pc < end {
         let pcu = pc as usize; 
 
-        let words = input[pcu].clone();
-        //println!("{:?}", words);   
+        let instr = input[pcu];
+        //println!("{:?}", instr);   
 
-        match words[0].as_ref() {
-            "cpy" => {
-                let reg = parse_reg(&words[2]);
-                if reg.is_none() {
-                    continue;
-                }
-
-                cpu[ reg.unwrap() ] = parse_value(cpu, &words[1])
-            },
-            "inc" => {
-                let reg = parse_reg(&words[1]);
-                if reg.is_none() {
-                    continue;
-                }
-                cpu[ reg.unwrap() ] += 1
-            },
-            "dec" => {
-                let reg = parse_reg(&words[1]);
-                if reg.is_none() {
-                    continue;
-                }
-
-                cpu[ reg.unwrap() ] -= 1
-            },
-            "jnz" => {
-                if parse_value(cpu, &words[1]) != 0 {
-                    pc += parse_value(cpu, &words[2]);
+        match instr {
+            Instr::Copy(v, Arg::Reg(r)) => cpu[ usize::from(r) ] = v.get_value(cpu),
+            Instr::Increment(Arg::Reg(r)) => cpu[ usize::from(r) ] += 1,
+            Instr::Decrement(Arg::Reg(r)) => cpu[ usize::from(r) ] -= 1,
+            Instr::JmpNotZro(x, y) => {
+                if x.get_value(cpu) != 0 {
+                    pc += y.get_value(cpu);
                     continue;
                 }
             },
-            "tgl" => {
-                input.get_mut(pcu + (parse_value(cpu, &words[1]) as usize)).map(|v| {
-                    let instr = v[0].clone();
-                    v[0] = match instr.as_ref() {
-                        "dec" | "tgl" => "inc".to_string(),
-                        "inc"         => "dec".to_string(),
-                        "jnz"         => "cpy".to_string(),
-                        "cpy"         => "jnz".to_string(),
-                        a             => a.to_string()
-                    };
+            Instr::Toggle(v) => {
+                input.get_mut((pc + v.get_value(cpu)) as usize).map(|v|{
+                    *v = v.toggle();
                 });
-            }
-            _ => {},
+            },
+            _   => {},
         }
 
         pc += 1;
