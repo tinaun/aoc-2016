@@ -21,11 +21,9 @@ pub fn adv_main(input: Vec<String>) {
 
     for line in input {
         if line.len() > 1 {
-            let limits: Vec<_> = line.split("-").collect();
+            let limits: Vec<u32> = line.split("-").filter_map(|n| n.parse().ok() ).collect();
 
-            let (low, high) = (limits[0].parse::<u32>().unwrap(), limits[1].parse::<u32>().unwrap());
-
-            ranges.insert( (low, high) );
+            ranges.insert( (limits[0], limits[1]) );
         }
     }
 
