@@ -107,9 +107,7 @@ pub fn adv_main(input: Vec<String>) {
     let end = input.len() as i32;
 
     while pc < end {
-        let pcu = pc as usize; 
-
-        let instr = input[pcu];
+        let instr = input[pc as usize];
         //println!("{:?}", instr);   
 
         match instr {
